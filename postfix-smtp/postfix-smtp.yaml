@@ -1,0 +1,1861 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    -
+      uuid: ae04fa2c061b4694ab3b602fbe358133
+      name: 'Templates/Applications'
+  templates:
+    -
+      uuid: 5c152a86a0724f619c54d2e9dc7dd0ad
+      template: 'postfix_smtp_server'
+      name: 'Postfix SMTP Server by Zabbix Agent2 (active)'
+      description: |
+        This template is designed to monitor Postfix SMTP servers. It provides key metrics such as service availability, response time, and error rates to ensure the mail server is functioning properly. By using this template, administrators can proactively identify and resolve issues with their Postfix SMTP server infrastructure.
+      readme: |
+        # Postfix SMTP Server Template
+
+        This template is designed to monitor Postfix SMTP servers. It provides key metrics such as service availability, response time, and error rates to ensure the mail server is functioning properly. By using this template, administrators can proactively identify and resolve issues with their Postfix SMTP server infrastructure.
+
+        ## Key Features
+
+        - **Service Availability**: Monitor whether the Postfix SMTP service is running and accessible.
+        - **Response Time**: Track the response time of the SMTP server to ensure it is performing optimally.
+        - **Error Rates**: Monitor the number of errors occurring in the SMTP server to identify potential issues.
+
+        ## Usage
+
+        To use this template, simply import it into your Zabbix instance and link it to the hosts that are running Postfix SMTP servers. The template will automatically start collecting data and provide insights into the performance and health of your mail server infrastructure.
+      vendor:
+        name: 'John Stray'
+        version: '1.0'
+
+      groups:
+        -
+          name: 'Templates/Applications'
+
+      tags:
+        -
+          tag: class
+          value: software
+        -
+          tag: target
+          value: postfix
+
+      items:
+
+        # POSTFIX: Master Process Running
+        -
+          uuid: 7153fa82182f4152834dcfb8f617c85f
+          name: 'Postfix: Master Process Running'
+          description: 'This item checks if the Postfix master process is running. Monitoring the master process is crucial for ensuring that the Postfix SMTP server is operational and can handle incoming mail traffic.'
+          type: ZABBIX_ACTIVE
+          key: postfix.process.running
+          delay: 1m
+          history: 3d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: service
+            -
+              tag: application
+              value: postfix
+          trends: '0'
+          valuemap:
+            name: 'Postfix Process Status'
+          triggers:
+            -
+              uuid: 45827c0707f64d05a40e45c3a4dd7a32
+              expression: last(/postfix_smtp_server/postfix.process.running)=0
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.process.running)=1
+              name: 'Postfix Master Process is not running on {{HOST.NAME}}'
+              priority: DISASTER
+              manual_close: 'NO'
+
+        # POSTFIX: Mail Queue Size
+        -
+          uuid: 8c9b1e5a0c8f4d2b9a3e5f6a7b8c9d0e
+          name: 'Postfix: Mail Queue Size'
+          description: 'This item monitors the size of the Postfix mail queue. A growing mail queue can indicate issues with mail delivery, such as network problems or misconfigurations. Monitoring the mail queue size helps administrators identify and resolve potential issues before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.pfmailq
+          delay: 1m
+          history: 7d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mailqueue
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: ed2f72b564ef4e998045ab4b4e4b377f
+              expression: last(/postfix_smtp_server/postfix.pfmailq,5m)>{$POSTFIX.QUEUE.WARN}
+              name: 'Postfix Mail Queue Size is too high - ({ITEM.VALUE} messages) on {{HOST.NAME}}'
+              description: 'This trigger fires when the mail queue size exceeds the defined warning threshold. A high mail queue size can indicate issues with mail delivery, such as network problems or misconfigurations. It is important to investigate and resolve the underlying cause to ensure smooth mail server operation.'
+              priority: WARNING
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.pfmailq,5m)<=$POSTFIX.QUEUE.WARN
+              manual_close: 'YES'
+              dependencies:
+                 -
+                   name: 'Postfix Mail Queue Size is very high - ({ITEM.VALUE} messages) on {{HOST.NAME}}'
+                   expression: last(/postfix_smtp_server/postfix.pfmailq,5m)>{$POSTFIX.QUEUE.HIGH}
+            -
+              uuid: fbc160dd13144b069e428580e4000b5a
+              expression: last(/postfix_smtp_server/postfix.pfmailq,5m)>{$POSTFIX.QUEUE.HIGH}
+              name: 'Postfix Mail Queue Size is very high - ({ITEM.VALUE} messages) on {{HOST.NAME}}'
+              description: 'This trigger fires when the mail queue size exceeds the defined high threshold. A very high mail queue size can lead to significant mail delivery delays and potential loss of emails. Immediate investigation and resolution are required to prevent further issues with the mail server.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.pfmailq,5m)<=$POSTFIX.QUEUE.HIGH
+              manual_close: 'NO'
+              dependencies:
+                -
+                  name: 'Postfix Mail Queue Size is critical - ({ITEM.VALUE} messages) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.pfmailq,5m)>{$POSTFIX.QUEUE.DISASTER}
+            -
+              uuid: 5eeb6761243749be8b887d3780cf4b06
+              expression: last(/postfix_smtp_server/postfix.pfmailq,5m)>{$POSTFIX.QUEUE.DISASTER}
+              name: 'Postfix Mail Queue Size is critical - ({ITEM.VALUE} messages) on {{HOST.NAME}}'
+              description: 'This trigger fires when the mail queue size exceeds the defined critical threshold. A critical mail queue size can cause severe mail delivery failures and significant operational issues. Immediate action is required to address the underlying problems and restore normal mail server functionality.'
+              priority: DISASTER
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.pfmailq,5m)<=$POSTFIX.QUEUE.DISASTER
+              manual_close: 'NO'
+
+        # POSTFIX: SMTP Connections
+        -
+          uuid: fd513885ee094151ba8ebcc353b52d89
+          name: 'Postfix: SMTP Connections'
+          description: 'This item monitors the number of active SMTP connections to the Postfix server. Monitoring SMTP connections helps administrators understand the load on the mail server and identify potential issues with mail delivery or network connectivity.'
+          type: ZABBIX_ACTIVE
+          key: postfix.connections
+          delay: 1m
+          history: 7d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: service
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 1c9e5b8a7f4d4e5b9a3c2d1e6f7b8c9d
+              expression: last(/postfix_smtp_server/postfix.connections,5m)>{$POSTFIX.CONNECTIONS.WARN}
+              name: 'Postfix SMTP Connections are high - ({ITEM.VALUE} connections) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of active SMTP connections exceeds the defined warning threshold. A high number of SMTP connections can indicate increased mail traffic or potential issues with mail delivery. It is important to monitor and manage SMTP connections to ensure optimal performance of the mail server.'
+              priority: WARNING
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.connections,5m)<=$POSTFIX.CONNECTIONS.WARN
+              manual_close: 'YES'
+              dependencies:
+                 -
+                   name: 'Postfix SMTP Connections are very high - ({ITEM.VALUE} connections) on {{HOST.NAME}}'
+                   expression: last(/postfix_smtp_server/postfix.connections,5m)>{$POSTFIX.CONNECTIONS.HIGH}
+            -
+              uuid: 2d3f4e5b6a7c8d9e0f1a2b3c4d5e6f7g
+              expression: last(/postfix_smtp_server/postfix.connections,5m)>{$POSTFIX.CONNECTIONS.HIGH}
+              name: 'Postfix SMTP Connections are very high - ({ITEM.VALUE} connections) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of active SMTP connections exceeds the defined high threshold. A very high number of SMTP connections can lead to performance degradation and potential mail delivery issues. Immediate investigation and resolution are required to maintain optimal mail server functionality.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.connections,5m)<=$POSTFIX.CONNECTIONS.HIGH
+              manual_close: 'NO'
+
+        # POSTFIX: Postfix Log Data
+        -
+          uuid: c04ca0b89ce940ba9747b2bc7ef66c96
+          name: 'Postfix: Log Data (JSON)'
+          description: 'This item collects log data from the Postfix server. Analyzing log data can help administrators identify and troubleshoot issues with mail delivery, authentication, and other aspects of the mail servers operation.'
+          type: ZABBIX_ACTIVE
+          key: postfix.fetch_log_data
+          delay: 5m
+          history: 1d
+          value_type: TEXT
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: '0'
+
+        # POSTFIX: Queue Disk Usage %
+        -
+          uuid: f4c0337b5cc44d4f997a4d554b6c3e51
+          name: 'Postfix: Queue Disk Usage %'
+          description: 'This item monitors the percentage of disk space used by the Postfix mail queue. Monitoring disk usage is important to ensure that the mail server has sufficient resources to handle incoming and outgoing mail traffic without running into storage issues.'
+          type: ZABBIX_ACTIVE
+          key: postfix.queue.disk
+          delay: 5m
+          history: 7d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mailqueue
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d
+              expression: last(/postfix_smtp_server/postfix.queue.disk)>{$POSTFIX.QUEUE.DISK.WARN}
+              name: 'Postfix Queue Disk Usage is high - ({ITEM.VALUE}%) on {{HOST.NAME}}'
+              description: 'This trigger fires when the percentage of disk space used by the Postfix mail queue exceeds the defined warning threshold. High disk usage can lead to performance issues and potential mail delivery failures. It is important to monitor and manage disk usage to ensure optimal performance of the mail server.'
+              priority: WARNING
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.queue.disk)<=$POSTFIX.QUEUE.DISK.WARN
+              manual_close: 'YES'
+              dependencies:
+                 -
+                   name: 'Postfix Queue Disk Usage is very high - ({ITEM.VALUE}%) on {{HOST.NAME}}'
+                   expression: last(/postfix_smtp_server/postfix.queue.disk)>{$POSTFIX.QUEUE.DISK.HIGH}
+            -
+              uuid: 4e3f2d1c0b9a8f7e6d5c4b3a2f1e0d9c
+              expression: last(/postfix_smtp_server/postfix.queue.disk)>{$POSTFIX.QUEUE.DISK.HIGH}
+              name: 'Postfix Queue Disk Usage is very high - ({ITEM.VALUE}%) on {{HOST.NAME}}'
+              description: 'This trigger fires when the percentage of disk space used by the Postfix mail queue exceeds the defined high threshold. Very high disk usage can lead to severe performance degradation and potential mail delivery failures. Immediate investigation and resolution are required to maintain optimal mail server functionality.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.queue.disk)<=$POSTFIX.QUEUE.DISK.HIGH
+              manual_close: 'NO'
+
+        # POSTFIX: Postfix Version
+        -
+          uuid: c9ea171346334e7482de71b5bcd3a8f2
+          name: 'Postfix: Version'
+          description: 'This item retrieves the version of the Postfix server. Knowing the Postfix version can help administrators ensure that they are running a supported and secure version of the software, and can assist in troubleshooting and compatibility checks.'
+          type: ZABBIX_ACTIVE
+          key: postfix.version
+          delay: 12h
+          history: 30d
+          value_type: CHAR
+          tags:
+            -
+              tag: component
+              value: service
+            -
+              tag: application
+              value: postfix
+          trends: '0'
+
+        # POSTFIX: Submission (587) Reachability
+        -
+          uuid: 71020283e35d446d8318098668281e09
+          name: 'Postfix: Submission (587) Reachability'
+          description: 'This item checks the reachability of the Postfix submission service on port 587. Monitoring the submission service is important for ensuring that clients can send mail through the Postfix server, and that the server is properly configured to handle outgoing mail traffic.'
+          type: ZABBIX_ACTIVE
+          key: postfix.submission.check
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: service
+            -
+              tag: application
+              value: postfix
+          trends: '0'
+          triggers:
+            -
+              uuid: 27290edc65a2481ab1a30394f4271da5
+              expression: last(/postfix_smtp_server/postfix.submission.check)=0
+              name: 'Postfix Submission Service is not reachable on {{HOST.NAME}}'
+              description: 'This trigger fires when the Postfix submission service on port 587 is not reachable. Monitoring the reachability of the submission service is crucial for ensuring that clients can send mail through the Postfix server, and that the server is properly configured to handle outgoing mail traffic. Immediate investigation and resolution are required to restore normal mail server functionality.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.submission.check)=1
+              manual_close: 'NO'
+
+        # POSTFIX: Submissions (465) Reachability
+        -
+          uuid: 3a9f954cd565492eab407d2352709c2d
+          name: 'Postfix: Submissions (465) Reachability'
+          description: 'This item checks the reachability of the Postfix submissions service on port 465. Monitoring the submissions service is important for ensuring that clients can send mail through the Postfix server, and that the server is properly configured to handle outgoing mail traffic.'
+          type: ZABBIX_ACTIVE
+          key: postfix.submissions.check
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: service
+            -
+              tag: application
+              value: postfix
+          trends: '0'
+          triggers:
+            -
+              uuid: fe0ee6a7f2994ca8bbb858391c47f2cd
+              expression: last(/postfix_smtp_server/postfix.submissions.check)=0
+              name: 'Postfix Submissions Service is not reachable on {{HOST.NAME}}'
+              description: 'This trigger fires when the Postfix submissions service on port 465 is not reachable. Monitoring the reachability of the submissions service is crucial for ensuring that clients can send mail through the Postfix server, and that the server is properly configured to handle outgoing mail traffic. Immediate investigation and resolution are required to restore normal mail server functionality.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.submissions.check)=1
+              manual_close: 'NO'
+
+        # POSTFIX: SMTP (25) Reachability
+        -
+          uuid: 496c9d173d294e5ba909e22195460730
+          name: 'Postfix: SMTP (25) Reachability'
+          description: 'This item checks the reachability of the Postfix SMTP service on port 25. Monitoring the SMTP service is important for ensuring that the mail server can receive incoming mail traffic and that it is properly configured to handle email delivery.'
+          type: ZABBIX_ACTIVE
+          key: postfix.smtp.check
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: service
+            -
+              tag: application
+              value: postfix
+          trends: '0'
+          triggers:
+            -
+              uuid: ed7b497bab05413d8bb6c363e88429ce
+              expression: last(/postfix_smtp_server/postfix.smtp.check)=0
+              name: 'Postfix SMTP Service is not reachable on {{HOST.NAME}}'
+              description: 'This trigger fires when the Postfix SMTP service on port 25 is not reachable. Monitoring the reachability of the SMTP service is crucial for ensuring that the mail server can receive incoming mail traffic and that it is properly configured to handle email delivery. Immediate investigation and resolution are required to restore normal mail server functionality.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.smtp.check)=1
+              manual_close: 'NO'
+
+        # POSTFIX: TLS Certificate Details (465)
+        -
+          uuid: 0176f2d0318d4d6b8ca9edd681665eee
+          name: 'Postfix: TLS Certificate Details (465)'
+          description: 'This item retrieves details about the TLS certificate used by the Postfix server, such as the issuer, subject, and expiration date. Monitoring TLS certificate details is important for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired or misconfigured certificates.'
+          type: ZABBIX_ACTIVE
+          key: postfix.tls.cert.raw.465
+          delay: 12h
+          history: 30d
+          value_type: CHAR
+          tags:
+            -
+              tag: component
+              value: ssl-cert
+            -
+              tag: application
+              value: postfix
+          trends: '0'
+
+        # POSTFIX: TLS Certificate days remaining (465)
+        -
+          uuid: 4ced39d489c94f96a874d9f461cec82d
+          name: 'Postfix: TLS Certificate Days Remaining (465)'
+          description: 'This item monitors the number of days remaining before the TLS certificate used by the Postfix server expires. Monitoring TLS certificate expiration is important for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates.'
+          type: ZABBIX_ACTIVE
+          key: postfix.tls.cert.days.465
+          delay: 12h
+          history: 90d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: ssl-cert
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: 65c7dc74109a43f9972162ece56ef0e4
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<30
+              name: 'Postfix 465 TLS Certificate Expiration in {ITEM.VALUE} days on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 30 days. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. It is important to renew the TLS certificate before it expires to maintain optimal security and performance of the mail server.'
+              priority: WARNING
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=30
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'Postfix 465 TLS Certificate Expiration soon in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.tls.cert.days)<14
+            -
+              uuid: 15ca2001be334d9fb2675e0a302a8fe2
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<14
+              name: 'Postfix 465 TLS Certificate Expiration soon in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 7 days. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. Immediate action is required to renew the TLS certificate to prevent security issues and maintain optimal performance of the mail server.'
+              priority: WARNING
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=14
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'Postfix 465 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.tls.cert.days)<7
+            -
+              uuid: 7936fded59724acba877edb6e7d80aa4
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<7
+              name: 'Postfix 465 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 7 days. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. Immediate action is required to renew the TLS certificate to prevent security issues and maintain optimal performance of the mail server.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=7
+              manual_close: 'NO'
+              dependencies:
+                -
+                  name: 'Postfix 465 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.tls.cert.days)<1
+            -
+              uuid: 2ffac4485f4c40a888354f9372b9e0ec
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<1
+              name: 'Postfix 465 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 1 day. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. Immediate action is required to renew the TLS certificate to prevent security issues and maintain optimal performance of the mail server.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=1
+              manual_close: 'NO'
+              dependencies:
+                -
+                  name: 'Postfix 465 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.tls.cert.days)<1
+            -
+              uuid: f6c6686a5648469ba7b4c7ee72a957c6
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<0
+              name: 'Postfix 465 TLS Certificate Expired ({ITEM.VALUE} days) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 0 days, indicating that the certificate has expired. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. Immediate action is required to renew the TLS certificate to prevent security issues and restore optimal performance of the mail server.'
+              priority: DISASTER
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=0
+              manual_close: 'NO'
+
+        # POSTFIX: TLS Certificate Details (587)
+        -
+          uuid: 8c1974c985b0487f8c21d51f8b2e53a9
+          name: 'Postfix: TLS Certificate Details (587)'
+          description: 'This item retrieves details about the TLS certificate used by the Postfix server, such as the issuer, subject, and expiration date. Monitoring TLS certificate details is important for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired or misconfigured certificates.'
+          type: ZABBIX_ACTIVE
+          key: postfix.tls.cert.raw.587
+          delay: 12h
+          history: 30d
+          value_type: CHAR
+          tags:
+            -
+              tag: component
+              value: ssl-cert
+            -
+              tag: application
+              value: postfix
+          trends: '0'
+
+        # POSTFIX: TLS Certificate days remaining (587)
+        -
+          uuid: f98005ccfea240cb8c95842ae98f53bd
+          name: 'Postfix: TLS Certificate Days Remaining (587)'
+          description: 'This item monitors the number of days remaining before the TLS certificate used by the Postfix server expires. Monitoring TLS certificate expiration is important for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates.'
+          type: ZABBIX_ACTIVE
+          key: postfix.tls.cert.days.587
+          delay: 12h
+          history: 90d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: ssl-cert
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: c5e68ef314904e2489b1fedacc50fcfc
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<30
+              name: 'Postfix 587 TLS Certificate Expiration in {ITEM.VALUE} days on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 30 days. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. It is important to renew the TLS certificate before it expires to maintain optimal security and performance of the mail server.'
+              priority: WARNING
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=30
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'Postfix 587 TLS Certificate Expiration soon in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.tls.cert.days)<14
+            -
+              uuid: e21d4724c19e40cc840db54f221860ec
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<14
+              name: 'Postfix 587 TLS Certificate Expiration soon in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 7 days. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. Immediate action is required to renew the TLS certificate to prevent security issues and maintain optimal performance of the mail server.'
+              priority: WARNING
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=14
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'Postfix 587 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.tls.cert.days)<7
+            -
+              uuid: 51423bbf4baf43f5b46f9d19640c2cb9
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<7
+              name: 'Postfix 587 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 7 days. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. Immediate action is required to renew the TLS certificate to prevent security issues and maintain optimal performance of the mail server.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=7
+              manual_close: 'NO'
+              dependencies:
+                -
+                  name: 'Postfix 587 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.tls.cert.days)<1
+            -
+              uuid: 8cd97343a0a54dbd9d10f15311149bf6
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<1
+              name: 'Postfix 587 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 1 day. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. Immediate action is required to renew the TLS certificate to prevent security issues and maintain optimal performance of the mail server.'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=1
+              manual_close: 'NO'
+              dependencies:
+                -
+                  name: 'Postfix 587 TLS Certificate Expiration imminent in ({ITEM.VALUE} days) on {{HOST.NAME}}'
+                  expression: last(/postfix_smtp_server/postfix.tls.cert.days)<1
+            -
+              uuid: 441daa26ee74438a8039017f9976abb6
+              expression: last(/postfix_smtp_server/postfix.tls.cert.days)<0
+              name: 'Postfix 587 TLS Certificate Expired ({ITEM.VALUE} days) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of days remaining before the TLS certificate used by the Postfix server expires is less than 0 days, indicating that the certificate has expired. Monitoring TLS certificate expiration is crucial for ensuring that secure connections can be maintained and that there are no disruptions in mail server functionality due to expired certificates. Immediate action is required to renew the TLS certificate to prevent security issues and restore optimal performance of the mail server.'
+              priority: DISASTER
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.tls.cert.days)>=0
+              manual_close: 'NO'
+
+        # POSTFIX: Log Errors
+        -
+          uuid: 943e295664224f31b9f8db78343246c9
+          name: 'Postfix: Log Errors'
+          description: 'This item counts the number of error entries in the Postfix logs. Monitoring log errors can help administrators quickly identify and address issues with mail delivery, authentication, or other operational problems with the Postfix server.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.errors
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 9f4da877e5924dd1a6a5e0783551d835
+              expression: change(/postfix_smtp_server/postfix.log.errors)>{$POSTFIX.ERR.WARN}
+              name: 'Postfix Log Errors Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any error entries are detected in the Postfix logs over the last 5 minutes. Monitoring log errors is crucial for maintaining the health and performance of the mail server, as it allows administrators to quickly identify and resolve issues that may be impacting mail delivery or server stability.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Log Errors Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.errors)>{$POSTFIX.ERR.HIGH}
+            -
+              uuid: d3a18197110f4f2e963844622ebe437a
+              expression: change(/postfix_smtp_server/postfix.log.errors)>{$POSTFIX.ERR.HIGH}
+              name: 'High Number of Postfix Log Errors Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of error entries are detected in the Postfix logs over the last 5 minutes. A high number of log errors can indicate significant issues with mail delivery, authentication, or server performance. Immediate investigation and resolution are required to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Log Warnings
+        -
+          uuid: 1ecdfc3bcca342f5a3515ce1693bc0c9
+          name: 'Postfix: Log Warnings'
+          description: 'This item counts the number of warning entries in the Postfix logs. Monitoring log warnings can help administrators identify potential issues with mail delivery, authentication, or other operational aspects of the Postfix server before they escalate into more serious problems.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.warnings
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: d21e8f59c06e445189b4f088c86e05fd
+              expression: change(/postfix_smtp_server/postfix.log.warnings)>{$POSTFIX.WARN.WARN}
+              name: 'Postfix Log Warnings Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any warning entries are detected in the Postfix logs over the last 5 minutes. Monitoring log warnings is important for proactively identifying potential issues with mail delivery, authentication, or server performance, allowing administrators to address them before they escalate into more serious problems.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Log Warnings Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.warnings)>{$POSTFIX.WARN.HIGH}
+            -
+              uuid: d4d8e92e9f9d45fbbaf73f48138fa75b
+              expression: change(/postfix_smtp_server/postfix.log.warnings)>{$POSTFIX.WARN.HIGH}
+              name: 'High Number of Postfix Log Warnings Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of warning entries are detected in the Postfix logs over the last 5 minutes. A high number of log warnings can indicate potential issues with mail delivery, authentication, or server performance that require attention to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: SASL Authentication Failures
+        -
+          uuid: 795357391f62467885ebe12415ede82e
+          name: 'Postfix: SASL Authentication Failures'
+          description: 'This item counts the number of SASL authentication failures in the Postfix logs. Monitoring SASL authentication failures is crucial for identifying potential security issues, such as unauthorized access attempts or misconfigurations in the authentication setup of the Postfix server.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.sasl_auth_failed
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 2debb179f92a4b048472567987fd92eb
+              expression: change(/postfix_smtp_server/postfix.log.sasl.auth.failed)>{$POSTFIX.SASL.WARN}
+              name: 'Postfix SASL Authentication Failures Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any SASL authentication failures are detected in the Postfix logs over the last 5 minutes. Monitoring SASL authentication failures is important for identifying potential security issues, such as unauthorized access attempts or misconfigurations in the authentication setup of the Postfix server, allowing administrators to address them promptly.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix SASL Authentication Failures Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.sasl.auth.failed)>{$POSTFIX.SASL.HIGH}
+            -
+              uuid: 4634a4feb1064a85bf6d812fb60d03ac
+              expression: change(/postfix_smtp_server/postfix.log.sasl.auth.failed)>{$POSTFIX.SASL.HIGH}
+              name: 'High Number of Postfix SASL Authentication Failures Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of SASL authentication failures are detected in the Postfix logs over the last 5 minutes. A high number of SASL authentication failures can indicate significant security issues, such as unauthorized access attempts or misconfigurations in the authentication setup of the Postfix server, requiring immediate investigation and resolution to prevent further problems.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX Relay Denials
+        -
+          uuid: d0af85c9d2614b69a32f965518320603
+          name: 'Postfix: Relay Denials'
+          description: 'This item counts the number of relay denials in the Postfix logs. Monitoring relay denials is important for identifying potential issues with mail delivery, such as misconfigurations in the relay settings or unauthorized access attempts, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.relay_denied
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: c05976ffe8b84b71a9efc131bcf82575
+              expression: change(/postfix_smtp_server/postfix.log.relay.denied)>{$POSTFIX.RELAY.WARN}
+              name: 'Postfix Relay Denials Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any relay denials are detected in the Postfix logs over the last 5 minutes. Monitoring relay denials is crucial for identifying potential issues with mail delivery, such as misconfigurations in the relay settings or unauthorized access attempts, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Relay Denials Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.relay.denied)>{$POSTFIX.RELAY.HIGH}
+            -
+              uuid: 07d2c298ae8b4c0187b062b325b41273
+              expression: change(/postfix_smtp_server/postfix.log.relay.denied)>{$POSTFIX.RELAY.HIGH}
+              name: 'High Number of Postfix Relay Denials Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of relay denials are detected in the Postfix logs over the last 5 minutes. A high number of relay denials can indicate significant issues with mail delivery, such as misconfigurations in the relay settings or unauthorized access attempts, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        #POSTFIX: Spam Rejections
+        -
+          uuid: 66d50c1cdc9642859c6f1d366f7280a6
+          name: 'Postfix: Spam Rejections'
+          description: 'This item counts the number of spam rejections in the Postfix logs. Monitoring spam rejections is important for identifying potential issues with mail delivery, such as misconfigurations in spam filtering settings or an increase in spam traffic, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.spam_rejected
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 4fd86c8334a64291bbfff530ecb69b7e
+              expression: change(/postfix_smtp_server/postfix.log.spam.rejected)>{$POSTFIX.SPAM.WARN}
+              name: 'Postfix Spam Rejections Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any spam rejections are detected in the Postfix logs over the last 5 minutes. Monitoring spam rejections is crucial for identifying potential issues with mail delivery, such as misconfigurations in spam filtering settings or an increase in spam traffic, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Spam Rejections Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.spam.rejected)>{$POSTFIX.SPAM.HIGH}
+            -
+              uuid: 6673e70a8ee84cef964525001fc8d1a5
+              expression: change(/postfix_smtp_server/postfix.log.spam.rejected)>{$POSTFIX.SPAM.HIGH}
+              name: 'High Number of Postfix Spam Rejections Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of spam rejections are detected in the Postfix logs over the last 5 minutes. A high number of spam rejections can indicate significant issues with mail delivery, such as misconfigurations in spam filtering settings or an increase in spam traffic, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        #POSTFIX: RBL Rejections
+        -
+          uuid: 71fb3c2c5dba49de95ebe78529174a9f
+          name: 'Postfix: RBL Rejections'
+          description: 'This item counts the number of RBL (Real-time Blackhole List) rejections in the Postfix logs. Monitoring RBL rejections is important for identifying potential issues with mail delivery, such as misconfigurations in RBL settings or an increase in traffic from blacklisted IP addresses, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.rbl_reject
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 9224fa1526604ed79582d090479dde8e
+              expression: change(/postfix_smtp_server/postfix.log.rbl.reject)>{$POSTFIX.RBL.WARN}
+              name: 'Postfix RBL Rejections Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any RBL rejections are detected in the Postfix logs over the last 5 minutes. Monitoring RBL rejections is crucial for identifying potential issues with mail delivery, such as misconfigurations in RBL settings or an increase in traffic from blacklisted IP addresses, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix RBL Rejections Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.rbl.reject)>{$POSTFIX.RBL.HIGH}
+            -
+              uuid: e95c1664d8a54301ab3d391dd8671fdb
+              expression: change(/postfix_smtp_server/postfix.log.rbl.reject)>{$POSTFIX.RBL.HIGH}
+              name: 'High Number of Postfix RBL Rejections Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of RBL rejections are detected in the Postfix logs over the last 5 minutes. A high number of RBL rejections can indicate significant issues with mail delivery, such as misconfigurations in RBL settings or an increase in traffic from blacklisted IP addresses, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Unknown User Logins
+        -
+          uuid: 33ffb645f3c747278864f1b5895e3378
+          name: 'Postfix: Unknown User Logins'
+          description: 'This item counts the number of unknown user login attempts in the Postfix logs. Monitoring unknown user logins is important for identifying potential security issues, such as unauthorized access attempts or misconfigurations in user authentication settings, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.user_unknown
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 29ad40a6346b478e948800760f054fb1
+              expression: change(/postfix_smtp_server/postfix.log.user.unknown)>{$POSTFIX.USER.WARN}
+              name: 'Postfix Unknown User Logins Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any unknown user login attempts are detected in the Postfix logs over the last 5 minutes. Monitoring unknown user logins is crucial for identifying potential security issues, such as unauthorized access attempts or misconfigurations in user authentication settings, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Unknown User Logins Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.user.unknown)>{$POSTFIX.USER.HIGH}
+            -
+              uuid: f9e51b3f78a3470390e5c34422565d90
+              expression: change(/postfix_smtp_server/postfix.log.user.unknown)>{$POSTFIX.USER.HIGH}
+              name: 'High Number of Postfix Unknown User Logins Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of unknown user login attempts are detected in the Postfix logs over the last 5 minutes. A high number of unknown user logins can indicate significant security issues, such as unauthorized access attempts or misconfigurations in user authentication settings, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Connection Timeouts
+        -
+          uuid: f39bf89ea45d441f9747baf8dd710c32
+          name: 'Postfix: Connection Timeouts'
+          description: 'This item counts the number of connection timeouts in the Postfix logs. Monitoring connection timeouts is important for identifying potential issues with mail delivery, such as network problems or misconfigurations in connection settings, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.connection_timeout
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 565ba27aae6e4c41a65d02dfb1fb4347
+              expression: change(/postfix_smtp_server/postfix.log.connection.timeout)>{$POSTFIX.CONN.WARN}
+              name: 'Postfix Connection Timeouts Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any connection timeouts are detected in the Postfix logs over the last 5 minutes. Monitoring connection timeouts is crucial for identifying potential issues with mail delivery, such as network problems or misconfigurations in connection settings, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Connection Timeouts Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.connection.timeout)>{$POSTFIX.CONN.HIGH}
+            -
+              uuid: bbd80099166949ac895cbbc7d2e5db20
+              expression: change(/postfix_smtp_server/postfix.log.connection.timeout)>{$POSTFIX.CONN.HIGH}
+              name: 'High Number of Postfix Connection Timeouts Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of connection timeouts are detected in the Postfix logs over the last 5 minutes. A high number of connection timeouts can indicate significant issues with mail delivery, such as network problems or misconfigurations in connection settings, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: TLS Failures
+        -
+          uuid: 3b5866b9db39455d9e150ce2d774022c
+          name: 'Postfix: TLS Failures'
+          description: 'This item counts the number of TLS failures in the Postfix logs. Monitoring TLS failures is important for identifying potential security issues, such as misconfigurations in TLS settings or an increase in failed secure connections, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.tls_failed
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 1b6f0cf451b845f19f00e9f24c475cea
+              expression: change(/postfix_smtp_server/postfix.log.tls.failed)>{$POSTFIX.TLS.WARN}
+              name: 'Postfix TLS Failures Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any TLS failures are detected in the Postfix logs over the last 5 minutes. Monitoring TLS failures is crucial for identifying potential security issues, such as misconfigurations in TLS settings or an increase in failed secure connections, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix TLS Failures Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.tls.failed)>{$POSTFIX.TLS.HIGH}
+            -
+              uuid: db5aa7de2f2d415b91b1e3bbee565e5a
+              expression: change(/postfix_smtp_server/postfix.log.tls.failed)>{$POSTFIX.TLS.HIGH}
+              name: 'High Number of Postfix TLS Failures Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of TLS failures are detected in the Postfix logs over the last 5 minutes. A high number of TLS failures can indicate significant security issues, such as misconfigurations in TLS settings or an increase in failed secure connections, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Quota Exceeded
+        -
+          uuid: 37d783aadc6f4f3c8b8a188c8b5e6244
+          name: 'Postfix: Quota Exceeded'
+          description: 'This item counts the number of quota exceeded entries in the Postfix logs. Monitoring quota exceeded entries is important for identifying potential issues with mail delivery, such as misconfigurations in mailbox quotas or an increase in mail traffic that exceeds storage limits, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.quota_exceeded
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: 8ea326497c314b6b9666b7f71816914e
+              expression: change(/postfix_smtp_server/postfix.log.quota.exceeded)>{$POSTFIX.QUOTA.WARN}
+              name: 'Postfix Quota Exceeded Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any quota exceeded entries are detected in the Postfix logs over the last 5 minutes. Monitoring quota exceeded entries is crucial for identifying potential issues with mail delivery, such as misconfigurations in mailbox quotas or an increase in mail traffic that exceeds storage limits, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Quota Exceeded Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.quota.exceeded)>{$POSTFIX.QUOTA.HIGH}
+            -
+              uuid: 9384ad9537e144cd91978e37ae274d7f
+              expression: change(/postfix_smtp_server/postfix.log.quota.exceeded)>{$POSTFIX.QUOTA.HIGH}
+              name: 'High Number of Postfix Quota Exceeded Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of quota exceeded entries are detected in the Postfix logs over the last 5 minutes. A high number of quota exceeded entries can indicate significant issues with mail delivery, such as misconfigurations in mailbox quotas or an increase in mail traffic that exceeds storage limits, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Virus Detections
+        -
+          uuid: 84fbd6c08025417c83bc3cf507c90b39
+          name: 'Postfix: Virus Detections'
+          description: 'This item counts the number of virus detections in the Postfix logs. Monitoring virus detections is important for identifying potential security issues, such as misconfigurations in antivirus settings or an increase in virus-laden mail traffic, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.log.virus_found
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: logs
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          triggers:
+            -
+              uuid: ae70cc263ae14dc5aaf7b163bed6be82
+              expression: change(/postfix_smtp_server/postfix.log.virus.found)>{$POSTFIX.VIRUS.HIGH}
+              name: 'Postfix Virus Detections Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when any virus detections are detected in the Postfix logs over the last 5 minutes. Monitoring virus detections is crucial for identifying potential security issues, such as misconfigurations in antivirus settings or an increase in virus-laden mail traffic, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Virus Detections Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.log.virus.found)>{$POSTFIX.VIRUS.CRIT}
+            -
+              uuid: ca0ec64f1ef84a0b9ac18ec3733a1665
+              expression: change(/postfix_smtp_server/postfix.log.virus.found)>{$POSTFIX.VIRUS.CRIT}
+              name: 'High Number of Postfix Virus Detections Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of virus detections are detected in the Postfix logs over the last 5 minutes. A high number of virus detections can indicate significant security issues, such as misconfigurations in antivirus settings or an increase in virus-laden mail traffic, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        #POSTFIX: Received eMails
+        -
+          uuid: aec78d1187f4466497a3e44eb1ac0deb
+          name: 'Postfix: Received Emails'
+          description: 'This item counts the number of emails received by the Postfix server. Monitoring received emails is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.received
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTFIX: Delivered eMails
+        -
+          uuid: 29ccb71c42754352b6a06a69564fd364
+          name: 'Postfix: Delivered Emails'
+          description: 'This item counts the number of emails successfully delivered by the Postfix server. Monitoring delivered emails is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.delivered
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTFIX: Bounced eMails
+        -
+          uuid: 840dd484467141639c44b9bf53de059c
+          name: 'Postfix: Bounced Emails'
+          description: 'This item counts the number of emails that bounced back from the Postfix server. Monitoring bounced emails is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.bounced
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: 890e36e4dddb463b9711753912276153
+              expression: change(/postfix_smtp_server/postfix.emails.bounced)>{$POSTFIX.BOUNCE.WARN}
+              name: 'Postfix Bounced Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when bounced emails are detected by the Postfix server over the last 5 minutes. Monitoring bounced emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. Excessive bounced emails can indicate problems with recipient addresses, mail server configuration, or other issues that require attention to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Bounced Emails Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.emails.bounced)>{$POSTFIX.BOUNCE.HIGH}
+            -
+              uuid: 4a16c0a80ac847e9b2409563c065b6ad
+              expression: change(/postfix_smtp_server/postfix.emails.bounced)>{$POSTFIX.BOUNCE.HIGH}
+              name: 'High Number of Postfix Bounced Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of bounced emails are detected by the Postfix server over the last 5 minutes. Monitoring bounced emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. A high number of bounced emails can indicate significant problems with recipient addresses, mail server configuration, or other issues that require immediate attention to maintain optimal mail server performance.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Deferred eMails
+        -
+          uuid: 91955e464ff1462eb1b4fae8dd6d2375
+          name: 'Postfix: Deferred Emails'
+          description: 'This item counts the number of emails that have been deferred by the Postfix server. Monitoring deferred emails is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.deferred
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: 614efa3de3dc4c5dad502e00add82098
+              expression: change(/postfix_smtp_server/postfix.emails.deferred)>{$POSTFIX.DEFER.WARN}
+              name: 'Postfix Deferred Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when deferred emails are detected by the Postfix server over the last 5 minutes. Monitoring deferred emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. Excessive deferred emails can indicate problems with recipient servers, network issues, or other issues that require attention to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Deferred Emails Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.emails.deferred)>{$POSTFIX.DEFER.HIGH}
+            -
+              uuid: b67d6f9263b94b9b82c4784fb5b8d89b
+              expression: change(/postfix_smtp_server/postfix.emails.deferred)>{$POSTFIX.DEFER.HIGH}
+              name: 'High Number of Postfix Deferred Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of deferred emails are detected by the Postfix server over the last 5 minutes. Monitoring deferred emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. A high number of deferred emails can indicate significant problems with recipient servers, network issues, or other issues that require immediate attention to maintain optimal mail server performance.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Rejected eMails
+        -
+          uuid: ca5d6dee552a44fdb911a806b6d23828
+          name: 'Postfix: Rejected Emails'
+          description: 'This item counts the number of emails that have been rejected by the Postfix server. Monitoring rejected emails is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.rejected
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: 2094808b4ca744b497f5c13c7f16fc63
+              expression: change(/postfix_smtp_server/postfix.emails.rejected)>{$POSTFIX.REJECT.WARN}
+              name: 'Postfix Rejected Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when rejected emails are detected by the Postfix server over the last 5 minutes. Monitoring rejected emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. Excessive rejected emails can indicate problems with sender addresses, mail server configuration, or other issues that require attention to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Rejected Emails Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.emails.rejected)>{$POSTFIX.REJECT.HIGH}
+            -
+              uuid: 8157dccdc3f7452f8ae086e875f94ee0
+              expression: change(/postfix_smtp_server/postfix.emails.rejected)>{$POSTFIX.REJECT.HIGH}
+              name: 'High Number of Postfix Rejected Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of rejected emails are detected by the Postfix server over the last 5 minutes. Monitoring rejected emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. A high number of rejected emails can indicate significant problems with sender addresses, mail server configuration, or other issues that require immediate attention to maintain optimal mail server performance.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Reject Warnings
+        -
+          uuid: d77467c2e56d4c769f7c2a98f12c7cdd
+          name: 'Postfix: Reject Warnings'
+          description: 'This item counts the number of emails that have been rejected by the Postfix server that triggered a warning threshold. Monitoring rejected emails that trigger warnings is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.reject_warnings
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTFIX: Discarded eMails
+        -
+          uuid: 7e7d53850a094a31ae19f3ffd69128d8
+          name: 'Postfix: Discarded Emails'
+          description: 'This item counts the number of emails that have been discarded by the Postfix server. Monitoring discarded emails is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.discarded
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: bbcb780e5ea24563a7a977748dc001d2
+              expression: change(/postfix_smtp_server/postfix.emails.discarded)>{$POSTFIX.DISCARD.WARN}
+              name: 'Postfix Discarded Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when discarded emails are detected by the Postfix server over the last 5 minutes. Monitoring discarded emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. Excessive discarded emails can indicate problems with sender addresses, mail server configuration, or other issues that require attention to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Discarded Emails Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.emails.discarded)>{$POSTFIX.DISCARD.HIGH}
+            -
+              uuid: 71c207aa5c904e64ae3b21e5d32a04b8
+              expression: change(/postfix_smtp_server/postfix.emails.discarded)>{$POSTFIX.DISCARD.HIGH}
+              name: 'High Number of Postfix Discarded Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of discarded emails are detected by the Postfix server over the last 5 minutes. Monitoring discarded emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. A high number of discarded emails can indicate significant problems with sender addresses, mail server configuration, or other issues that require immediate attention to maintain optimal mail server performance.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Held eMails
+        -
+          uuid: 562f542526b7489c80bd967bf9c6272a
+          name: 'Postfix: Held Emails'
+          description: 'This item counts the number of emails that are currently held by the Postfix server. Monitoring held emails is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.held
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: 982b0436c7ca41e89d9b428b1bd2809c
+              expression: change(/postfix_smtp_server/postfix.emails.held)>{$POSTFIX.HELD.WARN}
+              name: 'Postfix Held Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when held emails are detected by the Postfix server over the last 5 minutes. Monitoring held emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. Excessive held emails can indicate problems with recipient addresses, mail server configuration, or other issues that require attention to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                -
+                  name: 'High Number of Postfix Held Emails Detected on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.emails.held)>{$POSTFIX.HELD.HIGH}
+            -
+              uuid: 048c72773f1a47be9ded53ce49861f41
+              expression: change(/postfix_smtp_server/postfix.emails.held)>{$POSTFIX.HELD.HIGH}
+              name: 'High Number of Postfix Held Emails Detected on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of held emails are detected by the Postfix server over the last 5 minutes. Monitoring held emails is crucial for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly. A high number of held emails can indicate significant problems with recipient addresses, mail server configuration, or other issues that require immediate attention to maintain optimal mail server performance.'
+              priority: HIGH
+              manual_close: 'YES'
+
+        # POSTFIX: Forwarded eMails
+        -
+          uuid: f91d56aaaf454693a41e31eb9610c1af
+          name: 'Postfix: Forwarded Emails'
+          description: 'This item counts the number of emails that have been forwarded by the Postfix server. Monitoring forwarded emails is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.emails.forwarded
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTFIX: Bytes Received
+        -
+          uuid: 1da9622521d146e1b0fbda57e86abe08
+          name: 'Postfix: Bytes Received'
+          description: 'This item counts the total number of bytes received by the Postfix server. Monitoring bytes received is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.bytes_received
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTFIX: Bytes Delivered
+        -
+          uuid: aa16f797e6494a1d8b3fb8e96567a002
+          name: 'Postfix: Bytes Delivered'
+          description: 'This item counts the total number of bytes delivered by the Postfix server. Monitoring bytes delivered is important for understanding mail traffic patterns, identifying potential issues with mail delivery, and ensuring that the mail server is functioning properly.'
+          type: ZABBIX_ACTIVE
+          key: postfix.bytes_delivered
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: mail-traffic
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTSCREEN: Postscreen Active
+        -
+          uuid: 77630781525f4d4ea1346c176c7ebdb1
+          name: 'Postfix: Postscreen Active'
+          description: 'This item checks if the Postfix postscreen service is active. Monitoring the postscreen service is important for ensuring that the mail server is protected against spam and other unwanted mail traffic, as the postscreen service helps to filter and block such traffic before it reaches the main mail processing components.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.active
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 90d
+          valuemap:
+            name: 'Postfix Process Status'
+          triggers:
+            -
+              uuid: b291200fa756401fb4a33d2da808cc55
+              expression: last(/postfix_smtp_server/postfix.postscreen.active)=0
+              name: 'Postfix Postscreen Service is not active on {{HOST.NAME}}'
+              priority: HIGH
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: last(/postfix_smtp_server/postfix.postscreen.active)=1
+              manual_close: 'NO'
+
+        # POSTSCREEN: Postscreen Connections
+        -
+          uuid: 2175647f172648b391fb7ea6e032f9db
+          name: 'Postfix: Postscreen Connections'
+          description: 'This item monitors the number of active connections to the Postfix postscreen service. Monitoring postscreen connections helps administrators understand the load on the mail servers spam filtering component and identify potential issues with mail delivery or network connectivity.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.connect
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTSCREEN: New connections that have passed all postscreen checks (5min)
+        -
+          uuid: 18c9666ee34940968b75c423be05e9d5
+          name: 'Postfix: Postscreen Passed Connections (5min)'
+          description: 'This item counts the number of new connections that have passed all postscreen checks in the last 5 minutes. Monitoring passed connections helps administrators understand the effectiveness of the postscreen service in filtering out unwanted mail traffic and ensuring that legitimate mail traffic is allowed through to the main mail processing components.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.pass_new
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTSCREEN: Reccuring connections (already known)
+        -
+          uuid: fd3af90b8e59486f95f6f183f6c2cf6f
+          name: 'Postfix: Postscreen Recurrent Connections (5min)'
+          description: 'This item counts the number of recurring connections (already known) to the Postfix postscreen service in the last 5 minutes. Monitoring recurrent connections helps administrators identify potential issues with mail delivery, such as an increase in traffic from known sources, and allows them to address any underlying problems that may be impacting mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.pass_old
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+        # POSTSCREEN: Connections that have been rejected by postscreen
+        -
+          uuid: 66f8b53bd3da40cfa13ae602beaa7a18
+          name: 'Postfix: Postscreen Rejected Connections'
+          description: 'This item counts the number of connections that have been rejected by the Postfix postscreen service. Monitoring rejected connections is important for understanding the effectiveness of the postscreen service in filtering out unwanted mail traffic and identifying potential issues with mail delivery or network connectivity.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.reject
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: 9a09b8b593bb4ad299e3d81078596b8f
+              expression: change(/postfix_smtp_server/postfix.postscreen.reject)>{$POSTFIX.POSTSCREEN.WARN}
+              name: 'Postfix: Postscreen rejecting heavily ({$ITEM.VALUE}) on {{HOST.NAME}}'
+              description: 'This trigger fires when any connections are rejected by the Postfix postscreen service in the last 5 minutes. Monitoring postscreen rejections is crucial for understanding the effectiveness of the postscreen service in filtering out unwanted mail traffic and identifying potential issues with mail delivery or network connectivity, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'NO'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: change(/postfix_smtp_server/postfix.postscreen.reject)<={$POSTFIX.POSTSCREEN.WARN}
+              dependencies:
+                -
+                  name: 'Postfix: Postscreen reject flood ({$ITEM.VALUE}) on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.postscreen.reject)>{$POSTFIX.POSTSCREEN.HIGH}
+            -
+              uuid: 3b5eb85dadfb4ee98b482729f4e3132c
+              expression: change(/postfix_smtp_server/postfix.postscreen.reject)>{$POSTFIX.POSTSCREEN.HIGH}
+              name: 'Postfix: Postscreen reject flood ({$ITEM.VALUE}) on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of connections are rejected by the Postfix postscreen service in the last 5 minutes. A high number of postscreen rejections can indicate significant issues with mail delivery or an increase in unwanted mail traffic, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'NO'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: change(/postfix_smtp_server/postfix.postscreen.reject)<={$POSTFIX.POSTSCREEN.HIGH}
+
+        # POSTSCREEN: DNSBL Hits
+        -
+          uuid: 30ba20926e694cb1ad4f591d90045e76
+          name: 'Postfix: Postscreen DNSBL Hits'
+          description: 'This item counts the number of connections that were listed in a DNSBL (DNS-based Blackhole List). Monitoring DNSBL hits is important for understanding the effectiveness of the postscreen service in filtering out unwanted mail traffic and identifying potential issues with mail delivery or network connectivity.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.dnsbl
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: bfc5912ebc7f4d7e9e228cddb240f6c5
+              expression: change(/postfix_smtp_server/postfix.postscreen.dnsbl)>{$POSTFIX.POSTSCREEN.DNSBL.WARN}
+              name: 'Postfix: Postscreen high number of connections with DNSBL Hits ({$ITEM.VALUE}) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of DNSBL hits in the Postfix postscreen service exceeds the warning threshold in the last 5 minutes. Monitoring DNSBL hits is important for understanding the effectiveness of the postscreen service in filtering out unwanted mail traffic and identifying potential issues with mail delivery or network connectivity.'
+              priority: WARNING
+              manual_close: 'NO'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: change(/postfix_smtp_server/postfix.postscreen.dnsbl)<={$POSTFIX.POSTSCREEN.DNSBL.WARN}
+              dependencies:
+                -
+                  name: 'Postfix: Postscreen DNSBL Hit flood ({$ITEM.VALUE}) on {{HOST.NAME}}'
+                  expression: change(/postfix_smtp_server/postfix.postscreen.dnsbl)>{$POSTFIX.POSTSCREEN.DNSBL.HIGH}
+            -
+              uuid: ef88c6afd16045d3accab6a295f09310
+              expression: change(/postfix_smtp_server/postfix.postscreen.dnsbl)>{$POSTFIX.POSTSCREEN.DNSBL.HIGH}
+              name: 'Postfix: Postscreen DNSBL Hit flood ({$ITEM.VALUE}) on {{HOST.NAME}}'
+              description: 'This trigger fires when a high number of DNSBL hits in the Postfix postscreen service exceeds the high threshold in the last 5 minutes. A high number of DNSBL hits can indicate significant issues with mail delivery or an increase in unwanted mail traffic, requiring immediate investigation and resolution to prevent further problems with the mail server.'
+              priority: HIGH
+              manual_close: 'NO'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: change(/postfix_smtp_server/postfix.postscreen.dnsbl)<={$POSTFIX.POSTSCREEN.DNSBL.HIGH}
+
+        # POSTSCREEN: Postfix PREGREET - Clients that speak before the SMTP greeting (typical bot behavior)
+        -
+          uuid: 9ab70701b9234aeca9886dfe5b72bd67
+          name: 'Postfix: Postscreen PREGREET Clients'
+          description: 'This item counts the number of clients that speak before the SMTP greeting. Monitoring pregreet clients is important for identifying potential issues with mail delivery, such as an increase in traffic from bots or misconfigurations in connection settings, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.pregreet
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: b87075d238a540d7a05e86a043890179
+              expression: change(/postfix_smtp_server/postfix.postscreen.pregreet)>{$POSTFIX.POSTSCREEN.PREGREET.WARN}
+              name: 'Postfix: Postscreen high number of PREGREET clients ({$ITEM.VALUE}) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of clients that speak before the SMTP greeting in the Postfix postscreen service exceeds the warning threshold in the last 5 minutes. Monitoring pregreet clients is important for identifying potential issues with mail delivery, such as an increase in traffic from bots or misconfigurations in connection settings, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'NO'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: change(/postfix_smtp_server/postfix.postscreen.pregreet)<={$POSTFIX.POSTSCREEN.PREGREET.WARN}
+
+        # POSTSCREEN: Client HANGUP - Clients who aborted during the postscreen checks
+        -
+          uuid: 2724062f5ce7460b87b32bdeaf999c1a
+          name: 'Postfix: Postscreen Client HANGUP'
+          description: 'This item counts the number of clients who aborted during the postscreen checks. Monitoring client hangups is important for identifying potential issues with mail delivery, such as an increase in traffic from bots or misconfigurations in connection settings, allowing administrators to address them before they impact mail server performance.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.hangup
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+          triggers:
+            -
+              uuid: b2d577618613446e9eaacabef31024b2
+              expression: change(/postfix_smtp_server/postfix.postscreen.hangup)>{$POSTFIX.POSTSCREEN.HANGUP.WARN}
+              name: 'Postfix: Postscreen high number of client HANGUPs ({$ITEM.VALUE}) on {{HOST.NAME}}'
+              description: 'This trigger fires when the number of clients who aborted during the postscreen checks in the Postfix postscreen service exceeds the warning threshold in the last 5 minutes. Monitoring client hangups is important for identifying potential issues with mail delivery, such as an increase in traffic from bots or misconfigurations in connection settings, allowing administrators to address them promptly to maintain optimal mail server performance.'
+              priority: WARNING
+              manual_close: 'NO'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: change(/postfix_smtp_server/postfix.postscreen.hangup)<={$POSTFIX.POSTSCREEN.HANGUP.WARN}
+
+        # POSTSCREEN: Whitelisted Clients - Clients that were whitelisted by postscreen (5min)
+        -
+          uuid: 59029e769c4b4094b92bf765a14c0ec8
+          name: 'Postfix: Postscreen Whitelisted Clients (5min)'
+          description: 'This item counts the number of clients that were whitelisted by the Postfix postscreen service in the last 5 minutes. Monitoring whitelisted clients is important for understanding the effectiveness of the postscreen service in allowing legitimate mail traffic through to the main mail processing components and identifying potential issues with mail delivery or network connectivity.'
+          type: ZABBIX_ACTIVE
+          key: postfix.postscreen.whitelisted
+          delay: 5m
+          history: 30d
+          value_type: UNSIGNED
+          tags:
+            -
+              tag: component
+              value: postscreen
+            -
+              tag: application
+              value: postfix
+          trends: 365d
+
+      valuemaps:
+      -
+        uuid: 735dd9ecfa1d4b378b17291acf185b25
+        name: 'Postfix Process Status'
+        mappings:
+          -
+            value: '0'
+            newvalue: Down
+          -
+            value: '1'
+            newvalue: Up
+
+      dashboards:
+      -
+        uuid: fd82fd0f032d426fa8e9f14c3de96abc
+        name: 01 - Postfix
+        pages:
+        - widgets:
+          -
+            type: svggraph
+            name: Queue & Connections
+            x: '0'
+            y: '0'
+            width: '36'
+            height: '5'
+            fields:
+              -
+                type: STRING
+                name: ds.0.color.0
+                value: E83F6F
+              -
+                type: STRING
+                name: ds.0.color.1
+                value: 2274A5
+              -
+                type: INTEGER
+                name: ds.0.dataset_type
+                value: '0'
+              -
+                type: ITEM
+                name: ds.0.itemids.0
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.pfmailq
+              -
+                type: ITEM
+                name: ds.0.itemids.1
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.connections
+              -
+                type: STRING
+                name: reference
+                value: AAAAD
+          -
+            type: svggraph
+            name: Security Events
+            x: '36'
+            y: '0'
+            width: '36'
+            height: '5'
+            fields:
+              -
+                type: STRING
+                name: ds.0.color.0
+                value: E83F6F
+              -
+                type: STRING
+                name: ds.0.color.1
+                value: F0A202
+              -
+                type: STRING
+                name: ds.0.color.2
+                value: FFBF00
+              -
+                type: STRING
+                name: ds.0.color.3
+                value: 2274A5
+              -
+                type: INTEGER
+                name: ds.0.dataset_type
+                value: '0'
+              -
+                type: ITEM
+                name: ds.0.itemids.0
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.log.sasl_auth_failed
+              -
+                type: ITEM
+                name: ds.0.itemids.1
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.log.relay_denied
+              -
+                type: ITEM
+                name: ds.0.itemids.2
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.log.rbl_reject
+              -
+                type: ITEM
+                name: ds.0.itemids.3
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.log.tls_failed
+              -
+                type: STRING
+                name: reference
+                value: AAAAE
+          -
+            type: svggraph
+            name: Mail Problems
+            x: '0'
+            y: '5'
+            width: '36'
+            height: '5'
+            fields:
+              -
+                type: STRING
+                name: ds.0.color.0
+                value: E83F6F
+              -
+                type: STRING
+                name: ds.0.color.1
+                value: F0A202
+              -
+                type: STRING
+                name: ds.0.color.2
+                value: FFBF00
+              -
+                type: STRING
+                name: ds.0.color.3
+                value: 8B5CF6
+              -
+                type: INTEGER
+                name: ds.0.dataset_type
+                value: '0'
+              -
+                type: ITEM
+                name: ds.0.itemids.0
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.log.errors
+              -
+                type: ITEM
+                name: ds.0.itemids.1
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.log.warnings
+              -
+                type: ITEM
+                name: ds.0.itemids.2
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.log.quota_exceeded
+              -
+                type: ITEM
+                name: ds.0.itemids.3
+                value:
+                  host: postfix_smtp_server
+                  key: postfix.log.spam_rejected
+              -
+                type: STRING
+                name: reference
+                value: AAAAF
+
+      macros:
+        -
+          macro: '{$POSTFIX.CONNECTIONS.WARN}'
+          value: '20'
+          description: 'Warning threshold for Postfix active connections'
+        -
+          macro: '{$POSTFIX.CONNECTIONS.HIGH}'
+          value: '50'
+          description: 'High threshold for Postfix active connections'
+        -
+          macro: '{$POSTFIX.QUEUE.DISK.WARN}'
+          value: '80'
+          description: 'Warning threshold for Postfix mail queue disk usage (%)'
+        -
+          macro: '{$POSTFIX.QUEUE.DISK.HIGH}'
+          value: '90'
+          description: 'High threshold for Postfix mail queue disk usage (%)'
+        -
+          macro: '{$POSTFIX.QUEUE.WARN}'
+          value: '20'
+          description: 'Warning threshold for Postfix mail queue size'
+        -
+          macro: '{$POSTFIX.QUEUE.HIGH}'
+          value: '50'
+          description: 'High threshold for Postfix mail queue size'
+        -
+          macro: '{$POSTFIX.QUEUE.DISASTER}'
+          value: '100'
+          description: 'Disaster threshold for Postfix mail queue size'
+        -
+          macro: '{$POSTFIX.ERR.WARN}'
+          value: '5'
+          description: 'Warning threshold for Postfix log errors (5min)'
+        -
+          macro: '{$POSTFIX.ERR.HIGH}'
+          value: '10'
+          description: 'High threshold for Postfix log errors (5min)'
+        -
+          macro: '{$POSTFIX.WARN.WARN}'
+          value: '5'
+          description: 'Warning threshold for Postfix log warnings (5min)'
+        -
+          macro: '{$POSTFIX.WARN.HIGH}'
+          value: '10'
+          description: 'High threshold for Postfix log warnings (5min)'
+        -
+          macro: '{$POSTFIX.SASL.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix SASL authentication failures (5min)'
+        -
+          macro: '{$POSTFIX.SASL.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix SASL authentication failures (5min)'
+        -
+          macro: '{$POSTFIX.RELAY.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix relay denials (5min)'
+        -
+          macro: '{$POSTFIX.RELAY.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix relay denials (5min)'
+        -
+          macro: '{$POSTFIX.SPAM.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix spam rejections (5min)'
+        -
+          macro: '{$POSTFIX.SPAM.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix spam rejections (5min)'
+        -
+          macro: '{$POSTFIX.RBL.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix RBL rejections (5min)'
+        -
+          macro: '{$POSTFIX.RBL.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix RBL rejections (5min)'
+        -
+          macro: '{$POSTFIX.USER.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix unknown user logins (5min)'
+        -
+          macro: '{$POSTFIX.USER.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix unknown user logins (5min)'
+        -
+          macro: '{$POSTFIX.CONN.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix connection timeouts (5min)'
+        -
+          macro: '{$POSTFIX.CONN.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix connection timeouts (5min)'
+        -
+          macro: '{$POSTFIX.TLS.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix TLS failures (5min)'
+        -
+          macro: '{$POSTFIX.TLS.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix TLS failures (5min)'
+        -
+          macro: '{$POSTFIX.QUOTA.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix quota exceeded entries (5min)'
+        -
+          macro: '{$POSTFIX.QUOTA.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix quota exceeded entries (5min)'
+        -
+          macro: '{$POSTFIX.VIRUS.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix virus detections (5min)'
+        -
+          macro: '{$POSTFIX.VIRUS.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix virus detections (5min)'
+        -
+          macro: '{$POSTFIX.VIRUS.CRIT}'
+          value: '10'
+          description: 'Critical threshold for Postfix virus detections (5min)'
+        -
+          macro: '{$POSTFIX.BOUNCE.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix bounced emails'
+        -
+          macro: '{$POSTFIX.BOUNCE.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix bounced emails'
+        -
+          macro: '{$POSTFIX.DEFER.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix deferred emails'
+        -
+          macro: '{$POSTFIX.DEFER.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix deferred emails'
+        -
+          macro: '{$POSTFIX.REJECT.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix rejected emails'
+        -
+          macro: '{$POSTFIX.REJECT.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix rejected emails'
+        -
+          macro: '{$POSTFIX.DISCARD.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix discarded emails'
+        -
+          macro: '{$POSTFIX.DISCARD.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix discarded emails'
+        -
+          macro: '{$POSTFIX.HELD.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix held emails'
+        -
+          macro: '{$POSTFIX.HELD.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix held emails'
+        -
+          macro: '{$POSTFIX.POSTSCREEN.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix postscreen rejected connections (5min)'
+        -
+          macro: '{$POSTFIX.POSTSCREEN.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix postscreen rejected connections (5min)'
+        -
+          macro: '{$POSTFIX.POSTSCREEN.DNSBL.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix postscreen DNSBL hits (5min)'
+        -
+          macro: '{$POSTFIX.POSTSCREEN.DNSBL.HIGH}'
+          value: '5'
+          description: 'High threshold for Postfix postscreen DNSBL hits (5min)'
+        -
+          macro: '{$POSTFIX.POSTSCREEN.PREGREET.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix postscreen pregreet clients (5min)'
+        -
+          macro: '{$POSTFIX.POSTSCREEN.HANGUP.WARN}'
+          value: '1'
+          description: 'Warning threshold for Postfix postscreen client hangups (5min)'
